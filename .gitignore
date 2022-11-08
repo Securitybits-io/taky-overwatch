@@ -1,3 +1,6 @@
+src/*.p12
+certs/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
