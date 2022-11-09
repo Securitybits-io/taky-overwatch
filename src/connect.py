@@ -6,9 +6,9 @@ import socket
 import ssl
 import os
 import xmltodict
-#import cot
 import zipfile
 import requests
+import cot
 
 import xml.etree.ElementTree as ET
 
@@ -18,11 +18,11 @@ from time import sleep
 from queue import Queue
 from OpenSSL import crypto
 
-sourceURL = os.getenv("ZIPURL")
-clientColor = os.getenv("COLOR")
-IP = ""
+CLIENTURL = os.getenv("CLIENTURL")
+MASTERURL = os.getenv("MASTERURL")
+COLOR = os.getenv("COLOR")
 
-colors = [
+COLORS = [
     'White',
     'Yellow',
     'Orange',
@@ -48,9 +48,9 @@ def getCOT(socket, queue):
     queue.put(rawcot)
 
 
-def postCOT(run, queue):
+def postCOT(master_sock_ssl, queue):
   print(f"[+] Consumer Thread started, waiting on queued CoTs...")
-  while(run):
+  while(True):
     if queue.empty():
       sleep(5)
     else:
@@ -61,10 +61,11 @@ def postCOT(run, queue):
         if rawcot == False:
           pass
         else:
-          cot = parse_cot(rawcot)
-          assert clientColor.capitalize() in colors
-          cot['tak_color'] = string.capwords(clientColor)
-          print(f"{ cot }")
+          cotData = parse_cot(rawcot)
+          assert COLOR.capitalize() in COLORS
+          cotData['tak_color'] = string.capwords(COLOR)
+          cot.pushCoTLocation(master_sock_ssl, cotData['callsign'], cotData['tak_color'], cotData['tak_role'], cotData['lat'], cotData['lon'])
+          print(f"{ cotData }")
       except:
         print(f"Exception happened")
 
@@ -108,44 +109,41 @@ def parse_cot(rawcot):
   return cot
 
 
-
-
-def download_cert():
-  path = "/tmp/source_atak.zip"
-  URL = sourceURL
+def download_cert(type, url):
+  path = f"/tmp/{ type }_atak.zip"
+    
+  print(f"Downloading ATAK Certs from { url }")
   
-  print(f"Downloading ATAK Certs from {URL}")
-  
-  response = requests.get(URL)
-  open("/tmp/source_atak.zip", "wb").write(response.content)
+  response = requests.get(url)
+  open(path, "wb").write(response.content)
 
   return path
 
 
-def source_connect():
+def connect(type, url):
   listOfFiles = ""
   serverCert = ""
   clientCert = ""
   pref = ""
-  certfile  = "/tmp/client_certs/cert.pem"
-  keyfile   = "/tmp/client_certs/cert.key"
+  certfile  = f"/tmp/{ type }_certs/cert.pem"
+  keyfile   = f"/tmp/{ type }_certs/cert.key"
   cot_streams = {}
   app_pref = {}
 
-  zip_path = download_cert()
+  zip_path = download_cert(type, url)
   # Connecting to the Sending TAKY through the Cert based approach
   
   with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-    zip_ref.extractall("/tmp/client_certs")
+    zip_ref.extractall(f"/tmp/{ type }_certs")
     listOfFiles = zip_ref.namelist()
 
   for file in listOfFiles:
     if 'server' in file:
-      serverCert = "/tmp/client_certs/"+str(file)
+      serverCert = f"/tmp/{ type }_certs/"+str(file)
     if 'atak' in file:
-      clientCert = "/tmp/client_certs/"+str(file)
+      clientCert = f"/tmp/{ type }_certs/"+str(file)
     if 'preference.pref' in file:
-      pref = "/tmp/client_certs/"+str(file)
+      pref = f"/tmp/{ type }_certs/"+str(file)
   
   print(f'Server Cert: { serverCert }')
   print(f'Client Cert: { clientCert }')
@@ -190,19 +188,21 @@ def server_connect():
 
 def main():
   global sourceURL
-  global IP
   
   queue = Queue()
 
-  source_sock_ssl, source_conn = source_connect()
+  client_sock_ssl, client_conn = connect('client', CLIENTURL)
   
-  if (source_sock_ssl._connected == True):
+  if (client_sock_ssl._connected == True):
     print(f"[+] Connected to Source TAK Server")
-    producer = Thread(target=getCOT, args=(source_sock_ssl, queue))
+    producer = Thread(target=getCOT, args=(client_sock_ssl, queue))
     producer.start()
 
-  if (True):
-    consumer = Thread(target=postCOT, args=(True, queue))
+  master_sock_ssl, master_conn = connect('master', MASTERURL)
+
+  if (master_sock_ssl._connected == True):
+    print(f"[+] Connected to Master TAK Server")
+    consumer = Thread(target=postCOT, args=(master_sock_ssl, queue))
     consumer.start()
 
   return
