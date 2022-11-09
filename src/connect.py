@@ -67,13 +67,16 @@ def postCOT(master_sock_ssl, queue):
           assert COLOR.capitalize() in COLORS
           cotData['tak_color'] = string.capwords(COLOR)
           
-          cot.pushCoTLocation(master_sock_ssl, cotData['callsign'], cotData['tak_color'], cotData['tak_role'], 
-          
-          cotData['lat'], cotData['lon'])
+          cot.pushCoTLocation(master_sock_ssl, cotData['callsign'], cotData['tak_color'], cotData['tak_role'], cotData['lat'], cotData['lon'])
 
           logging.debug(f"{ cotData }")
+      except UnboundLocalError as e:
+        logging.error("msg: %s", e)
       except:
-        logging.error(f"Exception happened")
+        logging.error('Something went wrong')
+        logging.error('Raw Cot: %s', row)
+        logging.error('Parsed Cot: %s', cot)
+      sleep(0.5)
 
 
 def checkCOT(cot):
