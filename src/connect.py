@@ -111,7 +111,6 @@ def parse_cot(rawcot):
 
     log = '{} | {} | {} | {} | {} | {}'.format(time, callsign, color, role, coords['@lat'], coords['@lon'])
     logging.debug(f"Formatted CoT: { log }")
-    #logging.debug("Formatted CoT: %s", log)
   return cot
 
 
@@ -184,11 +183,6 @@ def connect(type, url):
   conn = sock_ssl.connect((IP, 8089))
 
   return sock_ssl, conn
-
-
-def server_connect():
-  # Connecting to Recieving TAKY through the monitoring port
-  return
 
 
 def main():
