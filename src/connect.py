@@ -20,7 +20,8 @@ from OpenSSL import crypto
 
 CLIENTURL = os.getenv("CLIENTURL")
 MASTERURL = os.getenv("MASTERURL")
-COLOR = os.getenv("COLOR")
+COLOR = os.getenv("COLOR", default="Yellow")
+LOG_LEVEL = os.getenv("LOG_LEVEL", default="INFO").upper()
 
 COLORS = [
     'White',
@@ -41,7 +42,7 @@ COLORS = [
 
 
 def getCOT(socket, queue):
-  print(f'[+] Producer Thread started, waiting on CoTs...')
+  logging.info(f'[+] Producer Thread started, waiting on CoTs...')
 
   while(True):
     rawcot = socket.recv()
@@ -49,7 +50,7 @@ def getCOT(socket, queue):
 
 
 def postCOT(master_sock_ssl, queue):
-  print(f"[+] Consumer Thread started, waiting on queued CoTs...")
+  logging.info(f"[+] Consumer Thread started, waiting on queued CoTs...")
   while(True):
     if queue.empty():
       sleep(5)
@@ -62,12 +63,17 @@ def postCOT(master_sock_ssl, queue):
           pass
         else:
           cotData = parse_cot(rawcot)
+          
           assert COLOR.capitalize() in COLORS
           cotData['tak_color'] = string.capwords(COLOR)
-          cot.pushCoTLocation(master_sock_ssl, cotData['callsign'], cotData['tak_color'], cotData['tak_role'], cotData['lat'], cotData['lon'])
-          print(f"{ cotData }")
+          
+          cot.pushCoTLocation(master_sock_ssl, cotData['callsign'], cotData['tak_color'], cotData['tak_role'], 
+          
+          cotData['lat'], cotData['lon'])
+
+          logging.debug(f"{ cotData }")
       except:
-        print(f"Exception happened")
+        logging.error(f"Exception happened")
 
 
 def checkCOT(cot):
@@ -104,7 +110,7 @@ def parse_cot(rawcot):
     }
 
     log = '{} | {} | {} | {} | {} | {}'.format(time, callsign, color, role, coords['@lat'], coords['@lon'])
-    print(f"Formatted CoT: { log }")
+    logging.debug(f"Formatted CoT: { log }")
     #logging.debug("Formatted CoT: %s", log)
   return cot
 
@@ -112,7 +118,7 @@ def parse_cot(rawcot):
 def download_cert(type, url):
   path = f"/tmp/{ type }_atak.zip"
     
-  print(f"Downloading ATAK Certs from { url }")
+  logging.info(f"Downloading ATAK Certs from { url }")
   
   response = requests.get(url)
   open(path, "wb").write(response.content)
@@ -131,7 +137,6 @@ def connect(type, url):
   app_pref = {}
 
   zip_path = download_cert(type, url)
-  # Connecting to the Sending TAKY through the Cert based approach
   
   with zipfile.ZipFile(zip_path, 'r') as zip_ref:
     zip_ref.extractall(f"/tmp/{ type }_certs")
@@ -145,9 +150,9 @@ def connect(type, url):
     if 'preference.pref' in file:
       pref = f"/tmp/{ type }_certs/"+str(file)
   
-  print(f'Server Cert: { serverCert }')
-  print(f'Client Cert: { clientCert }')
-  print(f'Preference File: { pref }')
+  logging.info(f'Server Cert: { serverCert }')
+  logging.info(f'Client Cert: { clientCert }')
+  logging.info(f'Preference File: { pref }')
 
   tree = ET.parse(pref)
   root = tree.getroot()
@@ -187,21 +192,21 @@ def server_connect():
 
 
 def main():
-  global sourceURL
+  logging.basicConfig(format='%(levelname)s:%(threadName)s:%(message)s', level=LOG_LEVEL)
   
   queue = Queue()
 
   client_sock_ssl, client_conn = connect('client', CLIENTURL)
   
   if (client_sock_ssl._connected == True):
-    print(f"[+] Connected to Source TAK Server")
+    logging.info(f"[+] Connected to Source TAK Server")
     producer = Thread(target=getCOT, args=(client_sock_ssl, queue))
     producer.start()
 
   master_sock_ssl, master_conn = connect('master', MASTERURL)
 
   if (master_sock_ssl._connected == True):
-    print(f"[+] Connected to Master TAK Server")
+    logging.info(f"[+] Connected to Master TAK Server")
     consumer = Thread(target=postCOT, args=(master_sock_ssl, queue))
     consumer.start()
 

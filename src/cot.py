@@ -1,5 +1,4 @@
 import logging
-import socket
 import datetime
 
 import xml.etree.ElementTree as ET
@@ -11,7 +10,7 @@ DIMENSION = 'G'
 HOW = 'm-g'
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 STALE_DURATION = 60 #StaleOut 1HOUR
-SENDER_UID = 'taky-bot'
+SENDER_UID = 'taky-overwatch'
 SENDER_CALLSIGN = 'Headquarters'
 
 def pushCoTLocation(sock, uid, color, role, lat, lon):
@@ -19,7 +18,7 @@ def pushCoTLocation(sock, uid, color, role, lat, lon):
 
     # Compose message
     message = composeLocation(uid, color, role, lat, lon)
-    print(message.decode("utf-8"))
+    logging.debug(message.decode("utf-8"))
 
     # Send message
     sock.send(message)

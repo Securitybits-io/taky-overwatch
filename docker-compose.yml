@@ -1,0 +1,11 @@
+version: "2.1"
+services:
+  taky-overwatch:
+    image: securitybits/taky-overwatch
+    container_name: taky-overwatch
+    environment:
+      - LOG_LEVEL=INFO
+      - MASTERURL=https://example.com/atak-to-cert.zip
+      - CLIENTURL=https://example.com/atak-from-cert.zip
+      - COLOR=YELLOW
+    restart: unless-stopped
