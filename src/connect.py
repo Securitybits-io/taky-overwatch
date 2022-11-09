@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+import string
 import socket
 import ssl
 import os
@@ -18,7 +19,25 @@ from queue import Queue
 from OpenSSL import crypto
 
 sourceURL = os.getenv("ZIPURL")
+clientColor = os.getenv("COLOR")
 IP = ""
+
+colors = [
+    'White',
+    'Yellow',
+    'Orange',
+    'Magenta',
+    'Red',
+    'Maroon',
+    'Purple',
+    'Dark Blue',
+    'Blue',
+    'Cyan',
+    'Teal',
+    'Green',
+    'Dark Green',
+    'Brown'
+    ]
 
 
 def getCOT(socket, queue):
@@ -27,7 +46,6 @@ def getCOT(socket, queue):
   while(True):
     rawcot = socket.recv()
     queue.put(rawcot)
-
 
 
 def postCOT(run, queue):
@@ -44,6 +62,8 @@ def postCOT(run, queue):
           pass
         else:
           cot = parse_cot(rawcot)
+          assert clientColor.capitalize() in colors
+          cot['tak_color'] = string.capwords(clientColor)
           print(f"{ cot }")
       except:
         print(f"Exception happened")
@@ -60,9 +80,6 @@ def checkCOT(cot):
 
 def parse_cot(rawcot):
   dict_cot = xmltodict.parse(rawcot)
-  print(f"{ dict_cot }")
-  raw_cot = xmltodict.unparse(dict_cot)
-  print(f"{ raw_cot }")
   
   if ('a-f-G-U-C' in dict_cot['event']['@type']):
     detail = dict_cot['event']['detail']
@@ -77,7 +94,7 @@ def parse_cot(rawcot):
     utc_dt = datetime.strptime(utc_time, "%Y-%m-%dT%H:%M:%S.%f%Z")
     #YYYY-MM-DD hh:mm:ss
     cot = {
-      "time": time.strip("Z"),
+      "time": time,
       "callsign": callsign,
       "tak_color": color,
       "tak_role": role,
@@ -86,7 +103,8 @@ def parse_cot(rawcot):
     }
 
     log = '{} | {} | {} | {} | {} | {}'.format(time, callsign, color, role, coords['@lat'], coords['@lon'])
-    logging.debug("Formatted CoT: %s", log)
+    print(f"Formatted CoT: { log }")
+    #logging.debug("Formatted CoT: %s", log)
   return cot
 
 
